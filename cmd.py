@@ -18,3 +18,6 @@ def tag_stdin():
 def get_descs(tags):
     descs = [pos.tag_descs[tag] for tag in tags]
     return json.dumps(descs)
+
+if __name__ == '__main__':
+    main()

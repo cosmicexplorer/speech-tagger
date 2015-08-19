@@ -22,17 +22,10 @@
 ;;; in testing, it's /penn_treebank_tags.json
 (def tag-defns (memoize #'json-read-file))
 
-;;; testing: /dictionary.json
-(def auxiliary-word-defns (memoize #'json-read-file))
-
 (defn pos-tag [tag-path tokens]
   (map
    (fn [w] [(.word w) (.tag w)])
    (.tagSentence ^MaxentTagger (load-pos-tagger tag-path) ^ArrayList tokens)))
-
-(defn get-defn
-  ([word] word)
-  ([word pos] [(clojure.string/join "," [word pos]) "a"]))
 
 (defn complete-tag-string [str tag-path defns-path]
   "Adds definitions for part of speech and the word itself given the output of
@@ -40,12 +33,9 @@ pos-tag."
   (map
    (fn [tok-vec]
      (let [[word tag] tok-vec
-           [word-defn word-ex] (get-defn word tag)
            [tag-defn tag-ex] (get (tag-defns defns-path) tag)]
        {:word word
         :tag tag
         :tag-defn tag-defn
-        :tag-ex tag-ex
-        :word-defn word-defn
-        :word-ex word-ex}))
+        :tag-ex tag-ex}))
    (pos-tag tag-path (tokenize str))))
