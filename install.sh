@@ -7,6 +7,7 @@ model_url="$gh_pfx/$version/english-left3words-distsim.tagger"
 tags_url="$gh_pfx/$version/penn_treebank_tags.json"
 bindir="/usr/bin/speech-tagger-lib"
 
+rm -rf "$bindir"
 mkdir -p "$bindir"
 for url in "$jar_url" "$model_url" "$tags_url"; do
   wget "$url" -P "$bindir"
