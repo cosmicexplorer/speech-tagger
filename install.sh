@@ -12,11 +12,11 @@ for url in "$jar_url" "$model_url" "$tags_url"; do
   wget "$url" -P "$bindir"
 done
 
-cat >/usr/bin/speech-tagger <<EOF
+cat >/usr/bin/speech-tag <<EOF
 #!/bin/sh
-prefix="/usr/bin/speech-tagger-lib"
+prefix="$bindir"
 java -jar "\$prefix/speech-tagger-0.0.0-SNAPSHOT-standalone.jar" \
   "\$prefix/english-left3words-distsim.tagger" \
   "\$prefix/penn_treebank_tags.json"
 EOF
-chmod +x /usr/bin/speech-tagger
+chmod +x /usr/bin/speech-tag
