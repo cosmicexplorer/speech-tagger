@@ -16,15 +16,23 @@ cause the tagger to cry."
 
 (defn print-err [msg] (.println *err* msg))
 
-(defn -main [tag-path defns-path & args]
+(def get-home (memoize (fn [] (System/getenv "HOME"))))
+
+(defn tilde-expand [str] (.replace str "~" (get-home)))
+
+(defn -main [tag-path-unfiltered defns-path-unfiltered & args]
   ;; these are memoized, so we're not throwing away data. this also checks if
   ;; the files actually exist immediately upon startup. these are still memoized
   ;; and not set as globals for easier testing
   ;; this will spew something out to stderr, really wish corenlp would stop that
-  (pos/load-pos-tagger tag-path)
-  (pos/tag-defns defns-path)
-  (print-err (format "%s %s" "Tagger loaded from:" tag-path))
-  (print-err (format "%s %s" "Tag definitions loaded from:" defns-path))
-  (print-err begin-string)
-  (doseq [temp-file (line-seq (BufferedReader. *in*))]
-    (println (json/write-str (analyze-file temp-file tag-path defns-path)))))
+  (let [tag-path (tilde-expand tag-path-unfiltered)
+        defns-path (tilde-expand defns-path-unfiltered)]
+    (pos/load-pos-tagger tag-path)
+    (pos/tag-defns defns-path)
+    (print-err (format "%s %s" "Tagger loaded from:" tag-path))
+    (print-err (format "%s %s" "Tag definitions loaded from:" defns-path))
+    (print-err begin-string)
+    (doseq [temp-file (line-seq (BufferedReader. *in*))]
+      (println
+       (json/write-str
+        (analyze-file (tilde-expand temp-file) tag-path defns-path))))))
