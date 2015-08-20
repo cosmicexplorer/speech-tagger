@@ -8,5 +8,6 @@
                  [edu.stanford.nlp/stanford-corenlp "3.5.2"]]
   :aot :all
   :main speech-tagger.core
+  :source-paths ["clj"]
   ;; nlp takes up lotsa memory
   :jvm-opts ["-Xmx1g"])
