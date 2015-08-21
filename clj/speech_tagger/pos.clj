@@ -4,24 +4,29 @@
    (java.util ArrayList)
    (edu.stanford.nlp.process PTBTokenizer)
    (edu.stanford.nlp.tagger.maxent MaxentTagger))
-  (:require [clojure.data.json :as json]))
+  (:require
+   [clojure.data.json :as json]
+   [clojure.java.io :as io]))
 
 (defn tokenize [s]
   (.tokenize (PTBTokenizer/newPTBTokenizer (StringReader. s))))
 
-;;; testing: /models/english-left3words-distsim.tagger
-(def load-pos-tagger (memoize (fn [path] (MaxentTagger. path))))
+(def load-pos-tagger
+  (memoize
+   (fn [] (MaxentTagger.
+           (.toString (io/resource "english-left3words-distsim.tagger"))))))
 
 (defn json-read-file [path]
   (json/read-str (slurp path)))
 
-;;; testing: /penn_treebank_tags.json
-(def tag-defns (memoize #'json-read-file))
+(def tag-defns
+  (memoize
+   (fn [] (json-read-file (io/file (io/resource "penn_treebank_tags.json"))))))
 
-(defn pos-tag [tag-path tokens]
+(defn pos-tag [tokens]
   (map
    (fn [w] [(.word w) (.tag w)])
-   (.tagSentence ^MaxentTagger (load-pos-tagger tag-path) ^ArrayList tokens)))
+   (.tagSentence ^MaxentTagger (load-pos-tagger) ^ArrayList tokens)))
 
 (defn replace-token-modifications [tok]
   "Tokenization changes the actual string sometimes. This reverts the changes."
@@ -46,13 +51,13 @@
     (map (fn [start-index tok] [start-index (+ start-index (.length tok))])
          token-indices toks-v)))
 
-(defn complete-tag-string [str tag-path defns-path]
+(defn complete-tag-string [str]
   "Adds definitions for part of speech and the word itself given the output of
 pos-tag and indices-for-tags."
   (map
    (fn [tok-vec]
      (let [[text tag start end] tok-vec
-           [tag-defn tag-ex] (get (tag-defns defns-path) tag)]
+           [tag-defn tag-ex] (get (tag-defns) tag)]
        {:start start
         :end end
         :text (replace-token-modifications text)
@@ -60,5 +65,5 @@ pos-tag and indices-for-tags."
         :tag-defn tag-defn
         :tag-ex tag-ex}))
    (let [tok-str (tokenize str)]
-     (map #'concat (pos-tag tag-path tok-str)
+     (map #'concat (pos-tag tok-str)
           (indices-for-tags str (map (fn [w] (.word w)) tok-str))))))
