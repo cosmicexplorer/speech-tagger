@@ -3,7 +3,8 @@
    (java.io StringReader)
    (java.util ArrayList)
    (edu.stanford.nlp.process PTBTokenizer)
-   (edu.stanford.nlp.tagger.maxent MaxentTagger))
+   (edu.stanford.nlp.tagger.maxent MaxentTagger)
+   (edu.stanford.nlp.util StringUtils))
   (:require
    [clojure.data.json :as json]
    [clojure.java.io :as io]))
@@ -13,15 +14,24 @@
 
 (def load-pos-tagger
   (memoize
-   (fn [] (MaxentTagger.
-           (.toString (io/resource "english-left3words-distsim.tagger"))))))
+   (fn []
+     (let [model-file
+           (.toString (io/resource "english-left3words-distsim.tagger"))]
+       ;; copied from corenlp's source; doesn't seem to be a way to turn off
+       ;; that stupid loading message otherwise
+       (MaxentTagger. model-file
+                      (StringUtils/argsToProperties
+                       ;; variadic args from java to clojure are dumb
+                       ;; especially with functions of multiple arity
+                       (into-array ^String ["-model" model-file]))
+                      false)))))
 
 (defn json-read-file [path]
   (json/read-str (slurp path)))
 
 (def tag-defns
   (memoize
-   (fn [] (json-read-file (io/file (io/resource "penn_treebank_tags.json"))))))
+   (fn [] (json-read-file (io/resource "penn_treebank_tags.json")))))
 
 (defn pos-tag [tokens]
   (map
