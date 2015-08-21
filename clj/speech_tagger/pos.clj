@@ -26,13 +26,6 @@
                        (into-array ^String ["-model" model-file]))
                       false)))))
 
-(defn json-read-file [path]
-  (json/read-str (slurp path)))
-
-(def tag-defns
-  (memoize
-   (fn [] (json-read-file (io/resource "penn_treebank_tags.json")))))
-
 (defn pos-tag [tokens]
   (map
    (fn [w] [(.word w) (.tag w)])
@@ -48,16 +41,12 @@
   ;; about this)
   (let [toks-v (vec (map #'replace-token-modifications tokens))
         token-indices
-        (loop [cur-index 0
-               cur-tok-index 0
-               tagged-tok-vec (list)]
+        (loop [cur-index 0 cur-tok-index 0 tagged-tok-vec (list)]
           (if (>= cur-tok-index (.length toks-v)) (reverse tagged-tok-vec)
               (let [new-index
                     (.indexOf string (nth toks-v cur-tok-index) cur-index)]
-                (recur
-                 new-index
-                 (inc cur-tok-index)
-                 (conj tagged-tok-vec new-index)))))]
+                (recur new-index (inc cur-tok-index)
+                       (conj tagged-tok-vec new-index)))))]
     (map (fn [start-index tok] [start-index (+ start-index (.length tok))])
          token-indices toks-v)))
 
@@ -66,14 +55,11 @@
 pos-tag and indices-for-tags."
   (map
    (fn [tok-vec]
-     (let [[text tag start end] tok-vec
-           [tag-defn tag-ex] (get (tag-defns) tag)]
+     (let [[text tag start end] tok-vec]
        {:start start
         :end end
         :text (replace-token-modifications text)
-        :tag tag
-        :tag-defn tag-defn
-        :tag-ex tag-ex}))
+        :tag tag}))
    (let [tok-str (tokenize str)]
      (map #'concat (pos-tag tok-str)
           (indices-for-tags str (map (fn [w] (.word w)) tok-str))))))
