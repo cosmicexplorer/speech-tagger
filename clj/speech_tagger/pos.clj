@@ -36,7 +36,7 @@
   (.replaceAll tok "``|''" "\""))
 
 (defn indices-for-tags [string tokens]
-  ;; this looks ugly as hell because clojure doesn't allow mutable locals,
+  ;; this looks ugly as hell because clojure doesn't have mutable locals,
   ;; otherwise we could just call map a few times and be done (yes i'm angry
   ;; about this)
   (let [toks-v (vec (map #'replace-token-modifications tokens))
