@@ -29,7 +29,11 @@
 
 (def token-mods-map
   {"-LRB-" "(",
-   "-RRB-" ")"})
+   "-RRB-" ")"
+   "-LSB-" "["
+   "-RSB-" "]"
+   "-LCB-" "{"
+   "-RCB-" "}"})
 
 (defn pos-tag [tokens]
   (map

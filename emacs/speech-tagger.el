@@ -110,7 +110,7 @@
 (defconst speech-tagger/+tag-proc-buf-name+ "*speech-tagger*")
 
 (defvar speech-tagger/*job-id-counter* 0)
-(defvar speech-tagger/*jobs* (make-hash-table))
+(defvar speech-tagger/*jobs* nil)
 
 (defun speech-tagger/lock-region (beg end)
   ;; TODO: add some other face to indicate text is being analyzed
@@ -189,11 +189,15 @@ TAGGED-STRING."
             (throw 'speech-tagger/different-text
                    (format "%s \"%s\" %s \"%s\"" "previous text" text
                            "is different than current text" new-txt)))
-          (let ((olay (make-overlay beg-ind end-ind)))
-            (overlay-put
-             olay 'face
-             (plist-get (gethash tag speech-tagger/*pos-hash*) :face))
-            (overlay-put olay 'speech-tagger t))))))
+          (let ((olay (make-overlay beg-ind end-ind))
+                (tag-hash (gethash tag speech-tagger/*pos-hash*)))
+            (overlay-put olay 'face (plist-get tag-hash :face))
+            (overlay-put olay 'speech-tagger t)
+            (overlay-put olay 'help-echo
+                         (format "%s: e.g %s"
+                                 (plist-get tag-hash :description)
+                                 (plist-get tag-hash :examples)))
+            (overlay-put olay 'mouse-face 'mode-line-highlight))))))
 
 (defun speech-tagger/process-tag-proc-json (plist)
   "Takes a json message PLIST from the external process and uses it to highlight
@@ -259,6 +263,7 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
 
 (defun speech-tagger/setup ()
   (unless speech-tagger/*pos-hash* (speech-tagger/refresh-table))
+  (unless speech-tagger/*jobs* (setq speech-tagger/*jobs* (make-hash-table)))
   (unless (process-live-p (get-process speech-tagger/+tag-proc-name+))
     (speech-tagger/start-tag-process)))
 
@@ -279,7 +284,9 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
   (when speech-tagger/*pos-hash* (clrhash speech-tagger/*pos-hash*))
   (setq speech-tagger/*job-id-counter* 0
         speech-tagger/*tag-proc* nil
-        speech-tagger/*tag-proc-cur-line* "")
+        speech-tagger/*tag-proc-cur-line* ""
+        speech-tagger/*jobs* nil
+        speech-tagger/*pos-hash* nil)
   (mapcar
    (lambda (proc)
      (when (equal (buffer-name (process-buffer proc))
