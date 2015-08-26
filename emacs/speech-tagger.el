@@ -176,21 +176,23 @@
 (defun speech-tagger/mark-parts-of-speech (beg tagged-string)
   "Marks parts of speech between BEG and END according to tags in
 TAGGED-STRING."
-  (cl-loop for tagged-section across tagged-string
-           do (let ((offset (plist-get tagged-section :start))
-                    (final (plist-get tagged-section :end))
-                    (text (plist-get tagged-section :text))
-                    (tag (plist-get tagged-section :tag)))
-                (let* ((beg-ind (+ beg offset))
-                       (end-ind (+ beg final))
-                       (new-txt (buffer-substring beg-ind end-ind)))
-                  (unless (equal text new-txt)
-                    (throw 'speech-tagger/different-text
-                           (format "%s \"%s\" %s \"%s\"" "previous text" text
-                                   "is different than current text" new-txt)))
-                  (put-text-property
-                   beg-ind end-ind 'face
-                   (plist-get (gethash tag speech-tagger/*pos-hash*) :face))))))
+  (cl-loop
+   for tagged-section across tagged-string
+   do (let ((offset (plist-get tagged-section :start))
+            (final (plist-get tagged-section :end))
+            (text (plist-get tagged-section :text))
+            (tag (plist-get tagged-section :tag))
+            (inhibit-read-only t))
+        (let* ((beg-ind (+ beg offset))
+               (end-ind (+ beg final))
+               (new-txt (buffer-substring beg-ind end-ind)))
+          (unless (equal text new-txt)
+            (throw 'speech-tagger/different-text
+                   (format "%s \"%s\" %s \"%s\"" "previous text" text
+                           "is different than current text" new-txt)))
+          (add-face-text-property
+           beg-ind end-ind
+           (plist-get (gethash tag speech-tagger/*pos-hash*) :face))))))
 
 (defun speech-tagger/process-tag-proc-json (plist)
   "Takes a json message PLIST from the external process and uses it to highlight
