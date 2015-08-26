@@ -181,8 +181,7 @@ TAGGED-STRING."
    do (let ((offset (plist-get tagged-section :start))
             (final (plist-get tagged-section :end))
             (text (plist-get tagged-section :text))
-            (tag (plist-get tagged-section :tag))
-            (inhibit-read-only t))
+            (tag (plist-get tagged-section :tag)))
         (let* ((beg-ind (+ beg offset))
                (end-ind (+ beg final))
                (new-txt (buffer-substring beg-ind end-ind)))
@@ -190,9 +189,11 @@ TAGGED-STRING."
             (throw 'speech-tagger/different-text
                    (format "%s \"%s\" %s \"%s\"" "previous text" text
                            "is different than current text" new-txt)))
-          (add-face-text-property
-           beg-ind end-ind
-           (plist-get (gethash tag speech-tagger/*pos-hash*) :face))))))
+          (let ((olay (make-overlay beg-ind end-ind)))
+            (overlay-put
+             olay 'face
+             (plist-get (gethash tag speech-tagger/*pos-hash*) :face))
+            (overlay-put olay 'speech-tagger t))))))
 
 (defun speech-tagger/process-tag-proc-json (plist)
   "Takes a json message PLIST from the external process and uses it to highlight
@@ -273,23 +274,9 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
               (speech-tagger/make-tag-proc-json new-beg new-end id))
              "\n"))))
 
-(defun speech-tagger/tag-dwim (pfx)
-  (interactive "P")
-  (speech-tagger/setup)
-  (if (not pfx)
-      (if (use-region-p)
-          (speech-tagger/send-region-to-tag-proc
-           (region-beginning) (region-end) speech-tagger/*tag-proc*)
-        (speech-tagger/send-region-to-tag-proc
-         (point-min) (point-max) speech-tagger/*tag-proc*))
-    (let ((bufname (read-buffer "buffer to tag: " nil t)))
-      (with-current-buffer bufname
-        (speech-tagger/send-region-to-tag-proc (point-min) (point-max)
-                                               speech-tagger/*tag-proc*)))))
-
 (defun speech-tagger/clear-state ()
-  (clrhash speech-tagger/*jobs*)
-  (clrhash speech-tagger/*pos-hash*)
+  (when speech-tagger/*jobs* (clrhash speech-tagger/*jobs*))
+  (when speech-tagger/*pos-hash* (clrhash speech-tagger/*pos-hash*))
   (setq speech-tagger/*job-id-counter* 0
         speech-tagger/*tag-proc* nil
         speech-tagger/*tag-proc-cur-line* "")
@@ -299,4 +286,31 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
                   speech-tagger/+tag-proc-buf-name+)
        (delete-process proc)))
    (process-list))
-  (ignore-errors (kill-buffer speech-tagger/+tag-proc-buf-name+)))
+  (when (bufferp speech-tagger/+tag-proc-buf-name+)
+    (kill-buffer speech-tagger/+tag-proc-buf-name+)))
+
+(defun speech-tagger/clear-overlays (&optional beg end)
+  (let ((b (or beg (point-min))) (e (or end (point-max))))
+    (let ((inhibit-read-only t))
+      (put-text-property b e 'read-only nil))
+    (remove-overlays b e 'speech-tagger t)))
+
+(defun speech-tagger/tag-dwim (pfx)
+  (interactive "P")
+  (speech-tagger/setup)
+  (if (not pfx)
+      (if (use-region-p)
+          (let ((wide-range (speech-tagger/widen-region-to-word-bounds
+                              (region-beginning) (region-end))))
+            (speech-tagger/clear-overlays
+             (first wide-range) (second wide-range))
+            (speech-tagger/send-region-to-tag-proc
+             (region-beginning) (region-end) speech-tagger/*tag-proc*))
+        (speech-tagger/clear-overlays (point-min) (point-max))
+        (speech-tagger/send-region-to-tag-proc
+         (point-min) (point-max) speech-tagger/*tag-proc*))
+    (let ((bufname (read-buffer "buffer to tag: " nil t)))
+      (with-current-buffer bufname
+        (speech-tagger/clear-overlays (point-min) (point-max))
+        (speech-tagger/send-region-to-tag-proc (point-min) (point-max)
+                                               speech-tagger/*tag-proc*)))))

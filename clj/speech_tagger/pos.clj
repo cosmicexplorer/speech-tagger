@@ -7,6 +7,7 @@
    (edu.stanford.nlp.util StringUtils))
   (:require
    [clojure.data.json :as json]
+   [clojure.string :as string]
    [clojure.java.io :as io]))
 
 (defn tokenize [s]
@@ -26,14 +27,23 @@
                        (into-array ^String ["-model" model-file]))
                       false)))))
 
+(def token-mods-map
+  {"-LRB-" "(",
+   "-RRB-" ")"})
+
 (defn pos-tag [tokens]
   (map
-   (fn [w] [(.word w) (.tag w)])
+   (fn [w] [(.word w)
+            (let [t (.tag w)] (or (get token-mods-map t) t))])
    (.tagSentence ^MaxentTagger (load-pos-tagger) ^ArrayList tokens)))
 
 (defn replace-token-modifications [tok]
   "Tokenization changes the actual string sometimes. This reverts the changes."
-  (.replaceAll tok "``|''" "\""))
+  (reduce (fn [cur next-key-tok]
+            (.replaceAll cur (string/join "" ["\\Q" next-key-tok "\\E"])
+                         (get token-mods-map next-key-tok)))
+          (.replaceAll tok "``|''" "\"")
+          (keys token-mods-map)))
 
 (defn indices-for-tags [string tokens]
   ;; this looks ugly as hell because clojure doesn't have mutable locals,
