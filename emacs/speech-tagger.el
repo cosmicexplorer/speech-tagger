@@ -77,7 +77,7 @@
 
 ;; part-of-speech face specs
 (defconst speech-tagger-+macro-charset+
-  '(96 39 34 40 41 59 35 91 93 91)
+  '(96 39 34 40 41 59 35 91 93)
   "` ' \" ( ) ; # [ ]")
 (defun speech-tagger-uniquify-list (l)
   "Return new list with only unique elements of L, in same order."
@@ -87,10 +87,9 @@
            finally (return (reverse new-list))))
 
 ;; assert macro charset's uniqueness
-(eval-when-compile
-  (unless (equal speech-tagger-+macro-charset+
-                 (speech-tagger-uniquify-list speech-tagger-+macro-charset+))
-    (throw 'speech-tagger-invalid-charset "macro charset is non-unique")))
+(unless (equal speech-tagger-+macro-charset+
+               (speech-tagger-uniquify-list speech-tagger-+macro-charset+))
+  (throw 'speech-tagger-invalid-charset "macro charset is non-unique"))
 
 (defconst speech-tagger-+macro-regex+
   (regexp-opt-charset speech-tagger-+macro-charset+))
