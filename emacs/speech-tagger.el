@@ -86,9 +86,11 @@
            do (unless (cl-find el new-list) (push el new-list))
            finally (return (reverse new-list))))
 
-(unless (equal speech-tagger-+macro-charset+
-               (speech-tagger-uniquify-list speech-tagger-+macro-charset+))
-  (throw 'speech-tagger-invalid-charset "macro charset is non-unique"))
+;; assert macro charset's uniqueness
+(eval-when-compile
+  (unless (equal speech-tagger-+macro-charset+
+                 (speech-tagger-uniquify-list speech-tagger-+macro-charset+))
+    (throw 'speech-tagger-invalid-charset "macro charset is non-unique")))
 
 (defconst speech-tagger-+macro-regex+
   (regexp-opt-charset speech-tagger-+macro-charset+))
