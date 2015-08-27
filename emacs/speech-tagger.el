@@ -77,7 +77,7 @@
 
 ;; part-of-speech face specs
 (defconst speech-tagger-+macro-charset+
-  '(96 39 34 40 41 59 35 91 93)
+  '(96 39 34 40 41 59 35 91 93 91)
   "` ' \" ( ) ; # [ ]")
 (defun speech-tagger-uniquify-list (l)
   "Return new list with only unique elements of L, in same order."
