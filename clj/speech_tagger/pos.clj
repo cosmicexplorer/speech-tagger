@@ -18,12 +18,12 @@
    (fn []
      (let [model-file
            (.toString (io/resource "english-left3words-distsim.tagger"))]
-       ;; copied from corenlp's source; doesn't seem to be a way to turn off
-       ;; that stupid loading message otherwise
+       ;; copied from corenlp's source; there doesn't seem to be another way to
+       ;; turn off the loading message from the default constructor
        (MaxentTagger. model-file
                       (StringUtils/argsToProperties
-                       ;; variadic args from java to clojure are dumb
-                       ;; especially with functions of multiple arity
+                       ;; variadic args from java to clojure requires some
+                       ;; gymnastics, especially with multiple arity
                        (into-array ^String ["-model" model-file]))
                       false)))))
 
@@ -50,9 +50,6 @@
           (keys token-mods-map)))
 
 (defn indices-for-tags [string tokens]
-  ;; this looks ugly as hell because clojure doesn't have mutable locals,
-  ;; otherwise we could just call map a few times and be done (yes i'm angry
-  ;; about this)
   (let [toks-v (vec (map #'replace-token-modifications tokens))
         token-indices
         (loop [cur-index 0 cur-tok-index 0 tagged-tok-vec (list)]
@@ -70,10 +67,8 @@ pos-tag and indices-for-tags."
   (map
    (fn [tok-vec]
      (let [[text tag start end] tok-vec]
-       {:start start
-        :end end
-        :text (replace-token-modifications text)
-        :tag tag}))
+       {:start start :end end :tag tag
+        :text (replace-token-modifications text)}))
    (let [tok-str (tokenize str)]
      (map #'concat (pos-tag tok-str)
           (indices-for-tags str (map (fn [w] (.word w)) tok-str))))))
