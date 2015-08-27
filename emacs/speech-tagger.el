@@ -93,14 +93,20 @@
 (defvar speech-tagger/*job-id-counter* 0)
 (defvar speech-tagger/*jobs* nil)
 
+(defface speech-tagger/loading-text
+  `((default (:background "#005540")))
+  "Face used for loading text being analyzed."
+  :group 'speech-tagger/faces)
 (defun speech-tagger/lock-region (beg end)
-  ;; TODO: add some other face to indicate text is being analyzed
-  (put-text-property beg end 'read-only t))
+  (put-text-property beg end 'read-only t)
+  (let ((olay (make-overlay beg end nil t)))
+    (overlay-put olay 'face 'speech-tagger/loading-text)))
 
 (defun speech-tagger/unlock-region (beg end)
   "Inverse of `speech-tagger/lock-region'."
   (let ((inhibit-read-only t))
-    (put-text-property beg end 'read-only nil)))
+    (put-text-property beg end 'read-only nil)
+    (remove-overlays beg end 'face 'speech-tagger/loading-text)))
 
 (defun speech-tagger/make-region-log (beg end buf)
   (goto-char beg)
@@ -171,7 +177,7 @@ TAGGED-STRING."
             (throw 'speech-tagger/different-text
                    (format "%s \"%s\" %s \"%s\"" "previous text" text
                            "is different than current text" new-txt)))
-          (let* ((olay (make-overlay beg-ind end-ind))
+          (let* ((olay (make-overlay beg-ind end-ind nil t))
                  (tag-hash (gethash tag speech-tagger/*pos-hash*))
                  (help-info
                   (format "%s: e.g %s"
