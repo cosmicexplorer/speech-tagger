@@ -4,7 +4,7 @@
 
 ;;; Author: Danny McClanahan <danieldmcclanahan@gmail.com>
 ;;; Version: 2015.08.27
-;;; Package-Requires: ((json "1.4") (cl-lib "0.5"))
+;;; Package-Requires: ((cl-lib "0.5"))
 ;;; Package-Version: 0.0.0
 ;;; Keywords: speech, tag, nlp, language, corenlp, parsing, natural
 ;;; URL: https://github.com/cosmicexplorer/speech-tagger
@@ -93,7 +93,7 @@
 (defun speech-tagger/find-free-char (ch charset)
   "Find a character usable to represent CH which isn't a member of CHARSET."
   (cl-loop while (cl-find ch charset)
-           do (incf ch)
+           do (cl-incf ch)
            finally (return ch)))
 (defconst speech-tagger/+macro-charset-escapes+
   (let ((tbl (make-hash-table :test #'equal)))
@@ -231,7 +231,7 @@ Insert job with key ID into `speech-tagger/*jobs*'."
            do (if (= speech-tagger/*job-id-counter* first-id)
                   ;; should never happen unless rest of code is awful
                   (throw 'no-available-jobs "no free job ids found")
-                (incf speech-tagger/*job-id-counter*))
+                (cl-incf speech-tagger/*job-id-counter*))
            finally (return speech-tagger/*job-id-counter*)))
 
 (defvar speech-tagger/*tag-proc-cur-line* "")
@@ -345,8 +345,8 @@ Send line-buffered json string to `speech-tagger/process-tag-proc-json'."
 Apply widening with `speech-tagger/widen-region-to-word-bounds'."
   (let* ((id (speech-tagger/get-job-id))
          (bounds (speech-tagger/widen-region-to-word-bounds beg end))
-         (new-beg (first bounds))
-         (new-end (second bounds)))
+         (new-beg (cl-first bounds))
+         (new-end (cl-second bounds)))
     (speech-tagger/lock-region-and-log new-beg new-end id)
     (process-send-string
      proc
@@ -418,7 +418,7 @@ warned that this function may take some time on large selections or buffers."
           (let ((wide-range (speech-tagger/widen-region-to-word-bounds
                               (region-beginning) (region-end))))
             (speech-tagger/clear-overlays
-             (first wide-range) (second wide-range))
+             (cl-first wide-range) (cl-second wide-range))
             (speech-tagger/send-region-to-tag-proc
              (region-beginning) (region-end) speech-tagger/*tag-proc*))
         (speech-tagger/clear-overlays (point-min) (point-max))
