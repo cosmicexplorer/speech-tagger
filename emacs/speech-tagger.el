@@ -281,7 +281,10 @@ job-id off of `speech-tagger-*jobs*'"
     (if (not reg-log)
         (throw 'speech-tagger-no-such-job
                (format "%s %d %s" "no job with id" job-id "found"))
-      (cl-destructuring-bind (:beg beg :end end :buffer buf :text text) reg-log
+      (let ((beg (plist-get reg-log :beg))
+            (end (plist-get reg-log :end))
+            (buf (plist-get reg-log :buffer))
+            (text (plist-get reg-log :text)))
         (with-current-buffer buf
           (let ((cur-text (buffer-substring beg end)))
             (unless (equal text cur-text)
@@ -365,7 +368,7 @@ Apply widening with `speech-tagger-widen-region-to-word-bounds'."
         speech-tagger-*tag-proc-cur-line* ""
         speech-tagger-*jobs* nil
         speech-tagger-*pos-hash* nil)
-  (mapcar
+  (mapc
    (lambda (proc)
      (when (equal (buffer-name (process-buffer proc))
                   speech-tagger-+tag-proc-buf-name+)
