@@ -28,7 +28,7 @@
                       false)))))
 
 (def token-mods-map
-  {"-LRB-" "(",
+  {"-LRB-" "("
    "-RRB-" ")"
    "-LSB-" "["
    "-RSB-" "]"
