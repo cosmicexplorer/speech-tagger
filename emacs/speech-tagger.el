@@ -80,11 +80,11 @@
 
 ;;; TODO: make a defcustom for the location of the jar; if none provided,
 ;;; download the jar and save it to the directory of this file
-(defvar speech-tagger/jar-dir
-  "/home/cosmicexplorer/projects/active/speech-tagger/target/")
-(defvar speech-tagger/jar-name "speech-tagger-0.0.0-SNAPSHOT-standalone.jar")
-(defvar speech-tagger/jar-path
-  (concat speech-tagger/jar-dir speech-tagger/jar-name))
+(defvar speech-tagger/jar-name "speech-tagger.jar")
+(defcustom speech-tagger/jar-path
+  (concat speech-tagger/this-file-dir speech-tagger/jar-name)
+  "Path to speech-tagger.jar required to run the part-of-speech tagging. Will be
+downloaded upon usage of tag function if not found at specified location.")
 
 (defvar speech-tagger/*tag-proc* nil)
 (defconst speech-tagger/+tag-proc-name+ "speech-tagger")
@@ -187,6 +187,7 @@ TAGGED-STRING."
             (overlay-put olay 'face (plist-get tag-hash :face))
             (overlay-put olay 'speech-tagger t)
             (overlay-put olay 'help-echo help-info)
+            (overlay-put olay 'speech-tagger/point-hover help-info)
             (overlay-put olay 'mouse-face 'mode-line-highlight))))))
 
 (defun speech-tagger/process-tag-proc-json (plist)
@@ -252,15 +253,24 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
      new-proc)))
 
 (defun speech-tagger/post-command-fn ()
-  (let ((p (get-char-property (point) 'help-echo)))
+  (let ((p (get-char-property (point) 'speech-tagger/point-hover)))
     (when p (message "%s" p))))
+
+(defconst speech-tagger/+jar-url+
+  "https://cosmicexplorer.github.io/speech-tagger/speech-tagger.jar"
+  "See the binary standalone jar in the gh-pages branch of this repo.")
 
 (defun speech-tagger/setup ()
   (unless speech-tagger/*pos-hash* (speech-tagger/refresh-table))
   (unless speech-tagger/*jobs* (setq speech-tagger/*jobs* (make-hash-table)))
   (unless (process-live-p (get-process speech-tagger/+tag-proc-name+))
     (speech-tagger/start-tag-process))
-  (add-hook 'post-command-hook #'speech-tagger/post-command-fn))
+  ;; pretty harmless to add this, even if permanent, since it won't affect other
+  ;; overlays unless they use the 'speech-tagger/point-hover property
+  (add-hook 'post-command-hook #'speech-tagger/post-command-fn)
+  ;; synchronous, which is annoying but useful for robustness
+  (unless (file-exists-p speech-tagger/jar-path)
+    (url-copy-file speech-tagger/+jar-url+ speech-tagger/jar-path)))
 
 (defun speech-tagger/send-region-to-tag-proc (beg end proc)
   (let* ((id (speech-tagger/get-job-id))
