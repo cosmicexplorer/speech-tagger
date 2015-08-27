@@ -78,8 +78,6 @@
   (setq speech-tagger/*pos-hash*
         (speech-tagger/get-json-table speech-tagger/pos-json-path)))
 
-;;; TODO: make a defcustom for the location of the jar; if none provided,
-;;; download the jar and save it to the directory of this file
 (defvar speech-tagger/jar-name "speech-tagger.jar")
 (defcustom speech-tagger/jar-path
   (concat speech-tagger/this-file-dir speech-tagger/jar-name)
@@ -260,18 +258,6 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
   "https://cosmicexplorer.github.io/speech-tagger/speech-tagger.jar"
   "See the binary standalone jar in the gh-pages branch of this repo.")
 
-(defun speech-tagger/setup ()
-  (unless speech-tagger/*pos-hash* (speech-tagger/refresh-table))
-  (unless speech-tagger/*jobs* (setq speech-tagger/*jobs* (make-hash-table)))
-  (unless (process-live-p (get-process speech-tagger/+tag-proc-name+))
-    (speech-tagger/start-tag-process))
-  ;; pretty harmless to add this, even if permanent, since it won't affect other
-  ;; overlays unless they use the 'speech-tagger/point-hover property
-  (add-hook 'post-command-hook #'speech-tagger/post-command-fn)
-  ;; synchronous, which is annoying but useful for robustness
-  (unless (file-exists-p speech-tagger/jar-path)
-    (url-copy-file speech-tagger/+jar-url+ speech-tagger/jar-path)))
-
 (defun speech-tagger/send-region-to-tag-proc (beg end proc)
   (let* ((id (speech-tagger/get-job-id))
          (bounds (speech-tagger/widen-region-to-word-bounds beg end))
@@ -316,6 +302,18 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
         (speech-tagger/clear-overlays))
     (let ((bufname (read-buffer "buffer to clear tags from: " nil t)))
       (with-current-buffer bufname (speech-tagger/clear-overlays)))))
+
+(defun speech-tagger/setup ()
+  (unless speech-tagger/*pos-hash* (speech-tagger/refresh-table))
+  (unless speech-tagger/*jobs* (setq speech-tagger/*jobs* (make-hash-table)))
+  ;; pretty harmless to add this, even if permanent, since it won't affect other
+  ;; overlays unless they use the 'speech-tagger/point-hover property
+  (add-hook 'post-command-hook #'speech-tagger/post-command-fn)
+  ;; synchronous, which is annoying but useful for robustness
+  (unless (file-exists-p speech-tagger/jar-path)
+    (url-copy-file speech-tagger/+jar-url+ speech-tagger/jar-path))
+  (unless (process-live-p (get-process speech-tagger/+tag-proc-name+))
+    (speech-tagger/start-tag-process)))
 
 ;;;###autoload
 (defun speech-tagger/tag-dwim (pfx)
