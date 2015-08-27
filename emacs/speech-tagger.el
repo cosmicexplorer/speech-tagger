@@ -46,29 +46,9 @@
    speech-tagger/+macro-regex+
    (lambda (ch-str) (gethash ch-str speech-tagger/+macro-charset-escapes+))
    str))
-(defun speech-tagger/group-string-by-size (str n)
-  "Splits list SET into N subsets of approximately equal size"
-  (cl-loop with cur-ind = 0 and out-lists = (make-list n nil)
-           for el across str
-           do (progn
-                (push el (nth cur-ind out-lists))
-                (setq cur-ind (mod (1+ cur-ind) n)))
-           finally (return out-lists)))
-(defconst speech-tagger/+max-rgb-value+ 255)
-(defun speech-tagger/split-string-into-thirds (str)
-  (mapcar
-   (lambda (l)
-     (if l (cl-reduce
-            (lambda (a b) (mod (* a b) speech-tagger/+max-rgb-value+)) l)
-       speech-tagger/+max-rgb-value+))
-   (speech-tagger/group-string-by-size str 3)))
+
 (defun speech-tagger/hash-pos-for-color (pos-str)
-  (concat
-   "#"
-   (reduce (lambda (a b)
-             (concat (if (stringp a) a (format "%X" a))
-                     (format "%X" b)))
-           (speech-tagger/split-string-into-thirds pos-str))))
+  (format "#%x" (string-to-number (substring (md5 pos-str) 0 6) 16)))
 
 (defun speech-tagger/destructure-json-table (entry face)
   "Transforms json in a table entry for a part of speech into a plist."
@@ -89,7 +69,8 @@
                           (speech-tagger/escape-macro-characters key)))
           `((default (:foreground ,(speech-tagger/hash-pos-for-color key))))
           ;; first of the value stored in the hash is description of pos
-          (aref val 0)))
+          (aref val 0)
+          :group 'speech-tagger/faces))
         tbl))
      tbl)
     tbl))
@@ -340,3 +321,5 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
         (speech-tagger/clear-overlays (point-min) (point-max))
         (speech-tagger/send-region-to-tag-proc
          (point-min) (point-max) speech-tagger/*tag-proc*)))))
+
+(provide 'speech-tagger)
