@@ -1,3 +1,64 @@
+;;; speech-tagger.el --- tag parts of speech using coreNLP
+
+;;; Copyright 2015 Danny McClanahan
+
+;;; Author: Danny McClanahan <danieldmcclanahan@gmail.com>
+;;; Version: 2015.08.27
+;;; Package-Requires: ((json "1.4") (cl-lib "0.5"))
+;;; Package-Version: 0.0.0
+;;; Keywords: speech, tag, nlp, language, corenlp, parsing, natural
+;;; URL: https://github.com/cosmicexplorer/speech-tagger
+
+;;; This file is not part of GNU Emacs.
+
+;;; This program is free software: you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation, either version 3 of the License, or
+;;; (at your option) any later version.
+
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;;; The interactive functions exported by this extension follow a common
+;;; protocol: if a region is active, then modify the region; otherwise modify
+;;; the entire buffer. If a prefix argument is provided, they read in a buffer
+;;; to modify the entirety of. A given region will be expanded to whitespace
+;;; boundaries (so if region is around the l characters in he|ll|o, the entirety
+;;; of |hello| will be selected).
+
+;;; Requires a "java" binary on the PATH. Downloads a mildly large jar file
+;;; (20.7M), which causes a large pause on the first usage, but none
+;;; afterwards. You can customize `speech-tagger/jar-path' to determine where it
+;;; looks for the presence of the jar.
+
+;;; Usage:
+
+;;; M-x `speech-tagger/tag-dwim'
+;; - Tag parts of speech in the appropriate region
+;; - "dwim" is an abbreviation for "do what I mean;" hopefully what I the
+;; developer mean is close enough to what you the user mean.
+;; - Tagging, as shown in the image above, colors a part of speech and adds a
+;; tooltip to it so that if you mouse over or move point over the part of
+;; speech, you get a description of the part of speech and example of that part
+;; of speech.
+
+;;; M-x `speech-tagger/clear-tags-dwim'
+;; - As above, but clears the region of all such tags.
+
+;;; ESC-: (`speech-tagger/clear-state')
+;; - Useful in the case that something screws up and you wish to debug.
+;; - Should revert all lisp code back to the same as when first loaded.
+;; - Does NOT delete the jar file, since the file takes an annoyingly long time to download.
+
+;;; Code:
+
 (require 'json)
 (require 'cl-lib)
 
@@ -337,3 +398,5 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
          (point-min) (point-max) speech-tagger/*tag-proc*)))))
 
 (provide 'speech-tagger)
+
+;;; speech-tagger.el ends here
