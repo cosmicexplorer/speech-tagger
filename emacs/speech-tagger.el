@@ -165,12 +165,17 @@ location.")
   `((default (:background "#005540")))
   "Face used for loading text being analyzed."
   :group 'speech-tagger/faces)
+(defconst speech-tagger/+loading-text-msg+
+  "Loading parts of speech from process...")
 (defun speech-tagger/lock-region (beg end)
   "Lock region between BEG and END from editing.
 Apply face `speech-tagger/loading-text'."
   (put-text-property beg end 'read-only t)
   (let ((olay (make-overlay beg end nil t)))
-    (overlay-put olay 'face 'speech-tagger/loading-text)))
+    (overlay-put olay 'face 'speech-tagger/loading-text)
+    (overlay-put olay 'help-echo speech-tagger/+loading-text-msg+)
+    (overlay-put olay 'speech-tagger/point-hover
+                 speech-tagger/+loading-text-msg+)))
 
 (defun speech-tagger/unlock-region (beg end)
   "Inverse `speech-tagger/lock-region' for region between BEG and END."
