@@ -13,7 +13,9 @@ Emacs and the `java` command on your PATH. For development, requires [lein](http
 
 # Install
 
-Download and `load` the el file, or add it to `load-path` and `(require 'speech-tagger)` (should be package-installable once on MELPA). Run `lein uberjar` to produce the standalone jar, then move that to `emacs/speech-tagger.jar` if building this from this repo. `speech-tagger.jar` will be available as part of the MELPA package.
+For users: just install the `speech-tagger` package from [MELPA](https://melpa.org/).
+
+For devs: `load` [the el file](emacs/speech-tagger.el), or add it to `load-path` and `(require 'speech-tagger)`. Run `lein uberjar` to produce the standalone jar, then move that to `emacs/speech-tagger.jar`. I could make a build system that does that automatically, but whatever.
 
 # Autoloads
 
@@ -34,7 +36,7 @@ As above, but clears the region of all such tags.
 ```emacs-lisp
 (speech-tagger-clear-state ()
 ```
-Useful in the case that something screws up and you wish to debug. Should revert all lisp code back to the same as when first loaded.
+Useful in the case that something screws up and you wish to debug. Should revert all lisp code back to the same as when first loaded. This isn't autoloaded, so you'll have to explicitly `(require 'speech-tagger)` or have already used one of the autoloaded functions.
 
 # Why?
 
