@@ -55,14 +55,16 @@
 ;;; ESC-: (`speech-tagger/clear-state')
 ;; - Useful in the case that something screws up and you wish to debug.
 ;; - Should revert all lisp code back to the same as when first loaded.
-;; - Does NOT delete the jar file, since the file takes an annoyingly long time to download.
+;; - Does NOT delete the jar file, since the file takes an annoyingly long time
+;; to download.
 
 ;;; Code:
 
 (require 'json)
 (require 'cl-lib)
 
-(defgroup speech-tagger/faces nil "Faces for speech-tag extension.")
+(defgroup speech-tagger/faces nil "Faces for speech-tag extension."
+  :group 'processes)
 
 ;;; tag descs json path
 (defvar speech-tagger/this-file-dir
@@ -77,6 +79,7 @@
   '(96 39 34 40 41 59 35 91 93)
   "` ' \" ( ) ; # [ ]")
 (defun speech-tagger/uniquify-list (l)
+  "Return new list with only unique elements of L, in same order."
   (cl-loop for el in l
            with new-list = nil
            do (unless (cl-find el new-list) (push el new-list))
@@ -88,6 +91,7 @@
 (defconst speech-tagger/+macro-regex+
   (regexp-opt-charset speech-tagger/+macro-charset+))
 (defun speech-tagger/find-free-char (ch charset)
+  "Find a character usable to represent CH which isn't a member of CHARSET."
   (cl-loop while (cl-find ch charset)
            do (incf ch)
            finally (return ch)))
@@ -103,20 +107,23 @@
          tbl)
      finally (return tbl))))
 (defun speech-tagger/escape-macro-characters (str)
+  "Replace characters not allowed to represent Lisp symbols in STR."
   (replace-regexp-in-string
    speech-tagger/+macro-regex+
    (lambda (ch-str) (gethash ch-str speech-tagger/+macro-charset-escapes+))
    str))
 
 (defun speech-tagger/hash-pos-for-color (pos-str)
+  "Pseudo-random color based on `md5' hash for POS-STR."
   (format "#%x" (string-to-number (substring (md5 pos-str) 0 6) 16)))
 
 (defun speech-tagger/destructure-json-table (entry face)
-  "Transforms json in a table entry for a part of speech into a plist."
+  "Transform json in ENTRY with given FACE for a part of speech into plist."
   (let ((desc (aref entry 0))
         (examples (aref entry 1)))
     (list :description desc :examples examples :face face)))
 (defun speech-tagger/get-json-table (path)
+  "Construct hash table of parts of speech from .json file at PATH."
   (let ((tbl (let ((json-object-type 'hash-table))
                (json-read-file path))))
     (maphash
@@ -136,14 +143,16 @@
      tbl)
     tbl))
 (defun speech-tagger/refresh-table ()
+  "Set `speech-tagger/*pos-hash*' to hash table created from .json file."
   (setq speech-tagger/*pos-hash*
         (speech-tagger/get-json-table speech-tagger/pos-json-path)))
 
 (defvar speech-tagger/jar-name "speech-tagger.jar")
 (defcustom speech-tagger/jar-path
   (concat speech-tagger/this-file-dir speech-tagger/jar-name)
-  "Path to speech-tagger.jar required to run the part-of-speech tagging. Will be
-downloaded upon usage of tag function if not found at specified location.")
+  "Path to speech-tagger.jar required to run the part-of-speech tagging.
+Will be downloaded upon usage of tag function if not found at specified
+location.")
 
 (defvar speech-tagger/*tag-proc* nil)
 (defconst speech-tagger/+tag-proc-name+ "speech-tagger")
@@ -157,17 +166,20 @@ downloaded upon usage of tag function if not found at specified location.")
   "Face used for loading text being analyzed."
   :group 'speech-tagger/faces)
 (defun speech-tagger/lock-region (beg end)
+  "Lock region between BEG and END from editing.
+Apply face `speech-tagger/loading-text'."
   (put-text-property beg end 'read-only t)
   (let ((olay (make-overlay beg end nil t)))
     (overlay-put olay 'face 'speech-tagger/loading-text)))
 
 (defun speech-tagger/unlock-region (beg end)
-  "Inverse of `speech-tagger/lock-region'."
+  "Inverse `speech-tagger/lock-region' for region between BEG and END."
   (let ((inhibit-read-only t))
     (put-text-property beg end 'read-only nil)
     (remove-overlays beg end 'face 'speech-tagger/loading-text)))
 
 (defun speech-tagger/make-region-log (beg end buf)
+  "Create job entry for part-of-speech tagging between BEG and END in BUF."
   (goto-char beg)
   (let ((beg-mark (point-marker)))
     (set-marker-insertion-type beg-mark t)
@@ -178,16 +190,19 @@ downloaded upon usage of tag function if not found at specified location.")
             :text (with-current-buffer buf (buffer-substring beg end))))))
 
 (defun speech-tagger/lock-region-and-log (beg end id)
-  ;; lock from editing
+  "Lock region between BEG and END from editing.
+Insert job with key ID into `speech-tagger/*jobs*'."
   (speech-tagger/lock-region beg end)
   (puthash id (speech-tagger/make-region-log beg end (current-buffer))
            speech-tagger/*jobs*))
 
 (defun speech-tagger/make-tag-proc-json (beg end id)
+  "Construct json to send to process for BEG to END with given ID."
   (list :job-id id
         :string (buffer-substring-no-properties beg end)))
 
 (defun speech-tagger/search-for-whitespace (direction)
+  "Move point to frontier of whitespace in given DIRECTION."
   (let ((space-regex "[[:space:]\r\n]"))
     (cond ((eq direction 'backward)
            (unless (let ((ch (char-before)))
@@ -201,6 +216,7 @@ downloaded upon usage of tag function if not found at specified location.")
                     "whitespace search direction not recognized")))))
 
 (defun speech-tagger/widen-region-to-word-bounds (beg end)
+  "Widen region between BEG and END with `speech-tagger/search-for-whitespace'."
   (goto-char beg)
   (speech-tagger/search-for-whitespace 'backward)
   (let ((new-beg (point)))
@@ -209,6 +225,7 @@ downloaded upon usage of tag function if not found at specified location.")
     (list beg end)))
 
 (defun speech-tagger/get-job-id ()
+  "Create new global job id for better concurrent commmunication with process."
   (cl-loop with first-id = (1- speech-tagger/*job-id-counter*)
            while (gethash speech-tagger/*job-id-counter* speech-tagger/*jobs*)
            do (if (= speech-tagger/*job-id-counter* first-id)
@@ -220,8 +237,7 @@ downloaded upon usage of tag function if not found at specified location.")
 (defvar speech-tagger/*tag-proc-cur-line* "")
 
 (defun speech-tagger/mark-parts-of-speech (beg tagged-string)
-  "Marks parts of speech between BEG and END according to tags in
-TAGGED-STRING."
+  "Mark parts of speech between BEG and END according to tags in TAGGED-STRING."
   (cl-loop
    for tagged-section across tagged-string
    do (let ((offset (plist-get tagged-section :start))
@@ -250,9 +266,9 @@ TAGGED-STRING."
             (overlay-put olay 'mouse-face 'mode-line-highlight))))))
 
 (defun speech-tagger/process-tag-proc-json (plist)
-  "Takes a json message PLIST from the external process and uses it to highlight
-text in the region marked by the job-id key of PLIST. Pops the job-id off of
-`speech-tagger/*jobs*'"
+  "Take json message PLIST from the external process.
+Use PLIST to highlight text in region marked by the job-id key of PLIST.  Pops
+job-id off of `speech-tagger/*jobs*'"
   (let* ((job-id (plist-get plist :job-id))
          (tagged-string (plist-get plist :tagged-string))
          (reg-log (gethash job-id speech-tagger/*jobs*)))
@@ -272,6 +288,8 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
 
 ;;; all json is received as a single line of text, making stream parsing easier
 (defun speech-tagger/receive-tag-proc-string (str)
+  "Receive string STR from process filter and line-buffer.
+Send line-buffered json string to `speech-tagger/process-tag-proc-json'."
   (let ((newline-match (string-match-p "\n" str)))
     ;; in case json message is larger than emacs's process output buffer
     ;; (unlikely if we don't send in massive strings to tagging process)
@@ -288,12 +306,14 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
          (substring str (1+ newline-match)))))))
 
 (defun speech-tagger/message-process-buffer (proc msg)
+  "Send PROC the string MSG while also inserting into PROC's process buffer."
   (with-current-buffer (process-buffer proc)
     (goto-char (point-max))
     (when (eolp) (insert "\n"))
     (insert msg)))
 
 (defun speech-tagger/start-tag-process ()
+  "Create part-of-speech tagging process."
   (setq
    speech-tagger/*tag-proc*
    (let ((new-proc
@@ -312,6 +332,7 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
      new-proc)))
 
 (defun speech-tagger/post-command-fn ()
+  "Run after interactive commands to highlight part of speech in minibuffer."
   (let ((p (get-char-property (point) 'speech-tagger/point-hover)))
     (when p (message "%s" p))))
 
@@ -320,6 +341,8 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
   "See the binary standalone jar in the gh-pages branch of this repo.")
 
 (defun speech-tagger/send-region-to-tag-proc (beg end proc)
+  "Send region between BEG and END to PROC.
+Apply widening with `speech-tagger/widen-region-to-word-bounds'."
   (let* ((id (speech-tagger/get-job-id))
          (bounds (speech-tagger/widen-region-to-word-bounds beg end))
          (new-beg (first bounds))
@@ -332,6 +355,7 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
              "\n"))))
 
 (defun speech-tagger/clear-state ()
+  "Utility function used to reset Lisp code to initial state."
   (when speech-tagger/*jobs* (clrhash speech-tagger/*jobs*))
   (when speech-tagger/*pos-hash* (clrhash speech-tagger/*pos-hash*))
   (setq speech-tagger/*job-id-counter* 0
@@ -349,6 +373,7 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
     (kill-buffer speech-tagger/+tag-proc-buf-name+)))
 
 (defun speech-tagger/clear-overlays (&optional beg end)
+  "Clear overlays from `speech-tagger/mark-parts-of-speech' between BEG, END."
   (let ((b (or beg (point-min))) (e (or end (point-max))))
     (let ((inhibit-read-only t))
       (put-text-property b e 'read-only nil)
@@ -356,6 +381,8 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
 
 ;;;###autoload
 (defun speech-tagger/clear-tags-dwim (pfx)
+  "Clear tag overlays from highlighted region or buffer.
+If PFX given, read buffer name to clear tags from."
   (interactive "P")
   (if (not pfx)
       (if (use-region-p)
@@ -365,6 +392,8 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
       (with-current-buffer bufname (speech-tagger/clear-overlays)))))
 
 (defun speech-tagger/setup ()
+  "Initialize globals as required.
+Must be re-run after using `speech-tagger/clear-state'."
   (unless speech-tagger/*pos-hash* (speech-tagger/refresh-table))
   (unless speech-tagger/*jobs* (setq speech-tagger/*jobs* (make-hash-table)))
   ;; pretty harmless to add this, even if permanent, since it won't affect other
@@ -378,6 +407,10 @@ text in the region marked by the job-id key of PLIST. Pops the job-id off of
 
 ;;;###autoload
 (defun speech-tagger/tag-dwim (pfx)
+  "Create tag overlays in selected region or buffer for parts of speech.
+Send selected region to external process for analysis.  Call
+`speech-tagger/setup' as required.  If PFX given, read buffer name to tag.  Be
+warned that this function may take some time on large selections or buffers."
   (interactive "P")
   (speech-tagger/setup)
   (if (not pfx)
