@@ -15,9 +15,9 @@ Emacs and the `java` command on your PATH. For development, requires [lein](http
 
 For users: just install the `speech-tagger` package from [MELPA](https://melpa.org/).
 
-For devs: `load` [the el file](emacs/speech-tagger.el), or add it to `load-path` and `(require 'speech-tagger)`. Run `lein uberjar` to produce the standalone jar, then move that to `emacs/speech-tagger.jar`. I could make a build system that does that automatically, but whatever.
+For devs: `load` [the el file](emacs/speech-tagger.el), or add it to `load-path` and `(require 'speech-tagger)`. Run `lein uberjar` to produce the standalone jar, then move that to `emacs/speech-tagger.jar`, or alternatively just customize `speech-tagger-jar-path` to point to the compiled jar. The melpa-build branch contains the compiled jar so that the entire package can be easily downloaded to MELPA.
 
-# Autoloads
+# Usage
 
 The interactive functions exported by this extension follow a common protocol: if a region is active, then modify the region; otherwise modify the entire buffer. If a prefix argument is provided, they read in a buffer to modify the entirety of. A given region will be expanded to whitespace boundaries (so if region is around the `l` characters in ` he|ll|o `, the entirety of `|hello|` will be selected).
 
@@ -30,6 +30,13 @@ Tag parts of speech in the appropriate region. "dwim" is an abbreviation for "do
 (speech-tagger-clear-tags-dwim (pfx)
 ```
 As above, but clears the region of all such tags.
+
+# Customization
+
+```emacs-lisp
+(defcustom speech-tagger-jar-path
+```
+Path to jar file used to tag parts of speech. Normal users won't need to touch this since it's included in the MELPA package, but developers may find it useful.
 
 # Utilities
 

@@ -66,6 +66,9 @@
 
 (defgroup speech-tagger-faces nil "Faces for speech-tag extension."
   :group 'processes)
+(defgroup speech-tagger-paths nil
+  "Paths to external files used in this extension."
+  :group 'processes)
 
 ;; tag descriptions json path
 (defvar speech-tagger-this-file-dir
@@ -151,9 +154,10 @@
         (speech-tagger-get-json-table speech-tagger-pos-json-path)))
 
 (defconst speech-tagger-jar-name "speech-tagger.jar")
-(defconst speech-tagger-jar-path
+(defcustom speech-tagger-jar-path
   (concat speech-tagger-this-file-dir speech-tagger-jar-name)
-  "Path to speech-tagger.jar required to run the part-of-speech tagging.")
+  "Path to speech-tagger.jar required to run the part-of-speech tagging."
+  :group 'speech-tagger-paths)
 
 (defvar speech-tagger-*tag-proc* nil)
 (defconst speech-tagger-+tag-proc-name+ "speech-tagger")
@@ -175,6 +179,7 @@ Apply face `speech-tagger-loading-text'."
   (let ((olay (make-overlay beg end nil t)))
     (overlay-put olay 'face 'speech-tagger-loading-text)
     (overlay-put olay 'help-echo speech-tagger-+loading-text-msg+)
+    (overlay-put olay 'speech-tagger t)
     (overlay-put olay 'speech-tagger-point-hover
                  speech-tagger-+loading-text-msg+)))
 
@@ -391,7 +396,9 @@ If PFX given, read buffer name to clear tags from."
   (interactive "P")
   (if (not pfx)
       (if (use-region-p)
-          (speech-tagger-clear-overlays (region-beginning) (region-end))
+          (let ((beg (min (region-beginning) (region-end)))
+                (end (max (region-beginning) (region-end))))
+            (speech-tagger-clear-overlays beg end))
         (speech-tagger-clear-overlays))
     (let ((bufname (read-buffer "buffer to clear tags from: " nil t)))
       (with-current-buffer bufname (speech-tagger-clear-overlays)))))
@@ -417,12 +424,14 @@ warned that this function may take some time on large selections or buffers."
   (speech-tagger-setup)
   (if (not pfx)
       (if (use-region-p)
-          (let ((wide-range (speech-tagger-widen-region-to-word-bounds
-                              (region-beginning) (region-end))))
+          (let* ((beg (min (region-beginning) (region-end)))
+                 (end (max (region-beginning) (region-end)))
+                 (wide-range
+                  (speech-tagger-widen-region-to-word-bounds beg end)))
             (speech-tagger-clear-overlays
              (cl-first wide-range) (cl-second wide-range))
             (speech-tagger-send-region-to-tag-proc
-             (region-beginning) (region-end) speech-tagger-*tag-proc*))
+             beg end speech-tagger-*tag-proc*))
         (speech-tagger-clear-overlays (point-min) (point-max))
         (speech-tagger-send-region-to-tag-proc
          (point-min) (point-max) speech-tagger-*tag-proc*))
