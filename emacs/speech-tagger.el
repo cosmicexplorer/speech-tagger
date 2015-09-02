@@ -63,6 +63,7 @@
 
 (require 'json)
 (require 'cl-lib)
+(require 'url)
 
 (defgroup speech-tagger-faces nil "Faces for speech-tag extension."
   :group 'processes)
@@ -148,16 +149,17 @@
         tbl))
      tbl)
     tbl))
+
 (defun speech-tagger-refresh-table ()
   "Set `speech-tagger-*pos-hash*' to hash table created from .json file."
   (setq speech-tagger-*pos-hash*
         (speech-tagger-get-json-table speech-tagger-pos-json-path)))
 
-(defconst speech-tagger-jar-name "speech-tagger.jar")
-(defcustom speech-tagger-jar-path
-  (concat speech-tagger-this-file-dir speech-tagger-jar-name)
+(defcustom speech-tagger-jar-path speech-tagger-this-file-dir
   "Path to speech-tagger.jar required to run the part-of-speech tagging."
   :group 'speech-tagger-paths)
+(defconst speech-tagger-jar-filename "speech-tagger.jar")
+(defconst speech-tagger-hash-filename "speech-tagger.md5sum")
 
 (defvar speech-tagger-*tag-proc* nil)
 (defconst speech-tagger-+tag-proc-name+ "speech-tagger")
@@ -333,7 +335,10 @@ Send line-buffered json string to `speech-tagger-process-tag-proc-json'."
    (let ((new-proc
           (start-process
            speech-tagger-+tag-proc-name+ speech-tagger-+tag-proc-buf-name+
-           "java" "-jar" speech-tagger-jar-path)))
+           "java" "-jar"
+           (expand-file-name
+            (concat (expand-file-name speech-tagger-jar-path)
+                    "speech-tagger.jar")))))
      (set-process-filter
       new-proc (lambda (proc msg)
                  (speech-tagger-message-process-buffer proc msg)
@@ -402,6 +407,113 @@ If PFX given, read buffer name to clear tags from."
         (speech-tagger-clear-overlays))
     (let ((bufname (read-buffer "buffer to clear tags from: " nil t)))
       (with-current-buffer bufname (speech-tagger-clear-overlays)))))
+
+(defconst speech-tagger-resources-base-url
+  "https://cosmicexplorer.github.io/speech-tagger/")
+(defconst speech-tagger-jar-url
+  (concat speech-tagger-resources-base-url speech-tagger-jar-filename)
+  "Url to download the speech tagging jar from.")
+(defconst speech-tagger-jar-hash-url
+  (concat speech-tagger-resources-base-url speech-tagger-hash-filename))
+(defconst speech-tagger-jar-file-path
+  (expand-file-name
+   (concat (expand-file-name speech-tagger-jar-path)
+           speech-tagger-jar-filename)))
+(defconst speech-tagger-jar-hash-path
+  (expand-file-name
+   (concat (expand-file-name speech-tagger-jar-path)
+           speech-tagger-hash-filename)))
+(defvar speech-tagger-jar-hash
+  (and (file-exists-p speech-tagger-jar-hash-path)
+       (with-temp-buffer
+         (insert-file-contents speech-tagger-jar-hash-path)
+         (buffer-string)))
+  "Hash string from md5sum to detect jar versioning.")
+
+(defun speech-tagger-retrieve-url-no-headers (url)
+  "Retrieve URL and remove HTTP headers."
+  (with-current-buffer (url-retrieve-synchronously url)
+    (goto-char (point-min))
+    (re-search-forward "^$")
+    (forward-char)
+    (delete-region (point-min) (point))
+    (current-buffer)))
+
+;;; works!!!
+;; (let ((buf
+;;        (speech-tagger-retrieve-url-no-headers
+;;         "http://cosmicexplorer.github.io/speech-tagger/speech-tagger.jar")))
+;;   (with-current-buffer buf
+;;     (delete-region (point-min) (point))
+;;     (message "FUCK: %s" (make-string 1 (char-after)))
+;;     (set-visited-file-name "test.jar")
+;;     (set-buffer-file-coding-system 'raw-text)
+;;     (save-buffer))
+;;   (kill-buffer buf))
+
+(defconst speech-tagger-downloads-list
+  (list
+   :hash (list speech-tagger-hash-filename speech-tagger-jar-hash-url)
+   :jar (list speech-tagger-jar-filename speech-tagger-jar-url)))
+
+(defun speech-tagger-save-buf (file url)
+  (let ((buf (speech-tagger-retrieve-url-no-headers url))
+        (before-save-hook nil))
+    (with-current-buffer buf
+      (fundamental-mode)
+      (set-visited-file-name file)
+      (set-buffer-file-coding-system 'raw-text)
+      (save-buffer))
+    buf))
+
+(defun speech-tagger-force-refresh-jar ()
+  "Force re-downloading of speech-tagger.jar."
+  (cl-destructuring-bind (:hash hash :jar jar) speech-tagger-downloads-list
+    (let* ((hash-str
+            (let ((buf (speech-tagger-save-buf (first hash) (second hash))) str)
+              (setq str (with-current-buffer buf (buffer-string)))
+              (kill-buffer buf)
+              str))
+           (jar-buf (speech-tagger-save-buf (first jar) (second jar)))
+           (md5-jar-str (concat (let ((coding-system-for-read 'raw-text))
+                              (secure-hash 'md5 (with-current-buffer jar-buf
+                                                  (fundamental-mode)
+                                                  (buffer-string))))
+                            "  speech-tagger.jar\n")))
+      (kill-buffer jar-buf)
+      (if (equal md5-jar-str hash-str)
+          (setq speech-tagger-jar-hash hash-str)
+        (throw 'speech-tagger-hash-unequal
+               (format
+                "%s (%s,%s) %s"
+                "speech-tagger.jar hashes were not equal" md5-buf hash-str
+                "Try reloading this extension."))))))
+
+(defun speech-tagger-refresh-jar ()
+  "Check if jar needs to be refreshed using contents of hash.
+Do so if required."
+  (let ((hash-contents
+         (let ((buf (speech-tagger-retrieve-url-no-headers
+                     speech-tagger-jar-hash-url))
+               str)
+           (setq str (with-current-buffer buf (buffer-string)))
+           (kill-buffer buf)
+           str)))
+    (cond ((or (not (file-exists-p speech-tagger-jar-file-path))
+               (not (file-exists-p speech-tagger-jar-hash-path)))
+           (message "%s %s, %s %s" "speech-tagger.jar or hash not found at"
+                    speech-tagger-jar-file-path "downloading from"
+                    speech-tagger-jar-url)
+           (speech-tagger-force-refresh-jar))
+          ((or
+            (not speech-tagger-jar-hash)
+            (not (equal hash-contents speech-tagger-jar-hash)))
+           (message "%s" "speech-tagger.jar is out of date, downloading from"
+                    speech-tagger-jar-url)
+           (speech-tagger-force-refresh-jar)))))
+
+;;; check hash on load, and (re-)download jar/hash if required
+(speech-tagger-refresh-jar)
 
 (defun speech-tagger-setup ()
   "Initialize globals as required.
