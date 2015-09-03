@@ -1,11 +1,13 @@
 speech-tagger
 =============
 
+[![MELPA](http://melpa.org/packages/speech-tagger-badge.svg)](http://melpa.org/#/speech-tagger)
+
 ![img](docs/usage.png "Example usage showing tooltip and minibuffer messaging.")
 
 You know what parts of speech are, but you've never seen them like this! In full living technicolor, language arises right before your very eyes!
 
-This is a program in two parts. The [clojure](clj/speech_tagger) section reads json in stdin (see [core.clj](clj/speech_tagger/core.clj)) and returns json characterizing parts of speech in that text using [corenlp](http://nlp.stanford.edu/software/corenlp.shtml). This is used in an [emacs extension](emacs/speech-tagger.el) (MELPA link incoming when accepted).
+This is a program in two parts. The [clojure](clj/speech_tagger) section reads json in stdin (see [core.clj](clj/speech_tagger/core.clj)) and returns json characterizing parts of speech in that text using [corenlp](http://nlp.stanford.edu/software/corenlp.shtml). This is used in an [emacs extension](emacs/speech-tagger.el) ([here](https://melpa.org/#/speech-tagger) on [MELPA](https://melpa.org)).
 
 # Dependencies
 
@@ -13,9 +15,9 @@ Emacs and the `java` command on your PATH. For development, requires [lein](http
 
 # Install
 
-For users: just install the `speech-tagger` package from [MELPA](https://melpa.org/). Downloads a pretty large jar file on first use, and also on updates.
+For users: just install the `speech-tagger` [package from MELPA](https://melpa.org/#/speech-tagger). Downloads a pretty large jar file on first use, and also on updates, so don't be scared if it takes a while to download the first time; it only happens once.
 
-For devs: `load` [the el file](emacs/speech-tagger.el), or add it to `load-path` and `(require 'speech-tagger)`. Run `lein uberjar` to produce the standalone jar, then move that to `emacs/speech-tagger.jar`, or alternatively just customize `speech-tagger-jar-path` to point to the compiled jar. (I could make a build system that does this automatically, but I don't care.) Set `speech-tagger-is-development` to non-nil to avoid re-downloading the jar file.
+For devs: `load` [the el file](emacs/speech-tagger.el), or add it to `load-path` and `(require 'speech-tagger)`. Run `lein uberjar` to produce the standalone jar, then move that to `emacs/speech-tagger.jar`, or alternatively just customize `speech-tagger-jar-path` to point to the compiled jar. (I could make a build system that does this automatically, but eh.) Set `speech-tagger-is-development` to non-nil to avoid re-downloading the jar file.
 
 # Usage
 
