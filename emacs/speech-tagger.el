@@ -439,22 +439,10 @@ If PFX given, read buffer name to clear tags from."
     (delete-region (point-min) (point))
     (current-buffer)))
 
-;;; works!!!
-;; (let ((buf
-;;        (speech-tagger-retrieve-url-no-headers
-;;         "http://cosmicexplorer.github.io/speech-tagger/speech-tagger.jar")))
-;;   (with-current-buffer buf
-;;     (delete-region (point-min) (point))
-;;     (message "FUCK: %s" (make-string 1 (char-after)))
-;;     (set-visited-file-name "test.jar")
-;;     (set-buffer-file-coding-system 'raw-text)
-;;     (save-buffer))
-;;   (kill-buffer buf))
-
 (defconst speech-tagger-downloads-list
   (list
-   :hash (list speech-tagger-hash-filename speech-tagger-jar-hash-url)
-   :jar (list speech-tagger-jar-filename speech-tagger-jar-url)))
+   :hash (list speech-tagger-jar-hash-path speech-tagger-jar-hash-url)
+   :jar (list speech-tagger-jar-file-path speech-tagger-jar-url)))
 
 (defun speech-tagger-save-buf (file url)
   (let ((buf (speech-tagger-retrieve-url-no-headers url))
@@ -512,7 +500,7 @@ Do so if required."
                     speech-tagger-jar-url)
            (speech-tagger-force-refresh-jar)))))
 
-;;; check hash on load, and (re-)download jar/hash if required
+;; check hash on load, and (re-)download jar/hash if required
 (speech-tagger-refresh-jar)
 
 (defun speech-tagger-setup ()
