@@ -33,11 +33,12 @@
 ;; boundaries (so if region is around the l characters in he|ll|o, the entirety
 ;; of |hello| will be selected).
 
-;; Requires a "java" binary on the PATH. Downloads a mildly large jar file
-;; (20.7M), which causes a large pause on the first usage, but none
+;; Requires a "java" binary on the PATH. Downloads a mildly large jar file on
+;; first use (~20.7M), which causes a large pause on the first usage, but none
 ;; afterwards. You can customize `speech-tagger-jar-path' to determine where it
-;; looks for the presence of the jar. You can also download the jar manually
-;; from `https://cosmicexplorer.github.io/speech-tagger/speech-tagger.jar'.
+;; looks for the presence of the jar. You can download the jar and hash manually
+;; from `https://cosmicexplorer.github.io/speech-tagger/speech-tagger.jar' and
+;; `https://cosmicexplorer.github.io/speech-tagger/speech-tagger.md5sum'.
 
 ;;; Usage:
 
@@ -58,6 +59,9 @@
 ;; - Should revert all lisp code back to the same as when first loaded.
 ;; - Does NOT delete the jar file, since the file takes an annoyingly long time
 ;; to download.
+
+;; ESC-: (`speech-tagger-force-refresh-jar')
+;; - Re-downloads jar file and md5sum. Useful for debugging jar downloads.
 
 ;;; Code:
 
@@ -158,6 +162,8 @@
 (defcustom speech-tagger-jar-path speech-tagger-this-file-dir
   "Path to speech-tagger.jar required to run the part-of-speech tagging."
   :group 'speech-tagger-paths)
+(defvar speech-tagger-is-development nil
+  "If non-nil, don't refresh jar `speech-tagger-refresh-jar'.")
 (defconst speech-tagger-jar-filename "speech-tagger.jar")
 (defconst speech-tagger-hash-filename "speech-tagger.md5sum")
 
@@ -445,6 +451,7 @@ If PFX given, read buffer name to clear tags from."
    :jar (list speech-tagger-jar-file-path speech-tagger-jar-url)))
 
 (defun speech-tagger-save-buf (file url)
+  "Write FILE from URL.  Return buffer containing contents of file."
   (let ((buf (speech-tagger-retrieve-url-no-headers url))
         (before-save-hook nil))
     (with-current-buffer buf
@@ -456,49 +463,53 @@ If PFX given, read buffer name to clear tags from."
 
 (defun speech-tagger-force-refresh-jar ()
   "Force re-downloading of speech-tagger.jar."
-  (cl-destructuring-bind (:hash hash :jar jar) speech-tagger-downloads-list
-    (let* ((hash-str
-            (let ((buf (speech-tagger-save-buf (first hash) (second hash))) str)
-              (setq str (with-current-buffer buf (buffer-string)))
-              (kill-buffer buf)
-              str))
-           (jar-buf (speech-tagger-save-buf (first jar) (second jar)))
-           (md5-jar-str (concat (let ((coding-system-for-read 'raw-text))
-                              (secure-hash 'md5 (with-current-buffer jar-buf
-                                                  (fundamental-mode)
-                                                  (buffer-string))))
-                            "  speech-tagger.jar\n")))
-      (kill-buffer jar-buf)
-      (if (equal md5-jar-str hash-str)
-          (setq speech-tagger-jar-hash hash-str)
-        (throw 'speech-tagger-hash-unequal
-               (format
-                "%s (%s,%s) %s"
-                "speech-tagger.jar hashes were not equal" md5-buf hash-str
-                "Try reloading this extension."))))))
+  (let* ((hash (plist-get speech-tagger-downloads-list :hash))
+         (jar (plist-get speech-tagger-downloads-list :jar))
+         (hash-str
+          (let ((buf (speech-tagger-save-buf
+                      (cl-first hash) (cl-second hash))) str)
+            (setq str (with-current-buffer buf (buffer-string)))
+            (kill-buffer buf)
+            str))
+         (jar-buf (speech-tagger-save-buf (cl-first jar) (cl-second jar)))
+         (md5-jar-str (concat (let ((coding-system-for-read 'raw-text))
+                                (secure-hash 'md5 (with-current-buffer jar-buf
+                                                    (fundamental-mode)
+                                                    (buffer-string))))
+                              "  speech-tagger.jar\n")))
+    (kill-buffer jar-buf)
+    (if (equal md5-jar-str hash-str)
+        (setq speech-tagger-jar-hash hash-str)
+      (throw 'speech-tagger-hash-unequal
+             (format
+              "%s (%s,%s) %s"
+              "speech-tagger.jar hashes were not equal" md5-jar-str hash-str
+              "Try reloading this extension.")))))
 
 (defun speech-tagger-refresh-jar ()
   "Check if jar needs to be refreshed using contents of hash.
 Do so if required."
-  (let ((hash-contents
-         (let ((buf (speech-tagger-retrieve-url-no-headers
-                     speech-tagger-jar-hash-url))
-               str)
-           (setq str (with-current-buffer buf (buffer-string)))
-           (kill-buffer buf)
-           str)))
-    (cond ((or (not (file-exists-p speech-tagger-jar-file-path))
-               (not (file-exists-p speech-tagger-jar-hash-path)))
-           (message "%s %s, %s %s" "speech-tagger.jar or hash not found at"
-                    speech-tagger-jar-file-path "downloading from"
-                    speech-tagger-jar-url)
-           (speech-tagger-force-refresh-jar))
-          ((or
-            (not speech-tagger-jar-hash)
-            (not (equal hash-contents speech-tagger-jar-hash)))
-           (message "%s" "speech-tagger.jar is out of date, downloading from"
-                    speech-tagger-jar-url)
-           (speech-tagger-force-refresh-jar)))))
+  (unless speech-tagger-is-development
+    (let ((hash-contents
+           (let ((buf (speech-tagger-retrieve-url-no-headers
+                       speech-tagger-jar-hash-url))
+                 str)
+             (setq str (with-current-buffer buf (buffer-string)))
+             (kill-buffer buf)
+             str)))
+      (cond ((or (not (file-exists-p speech-tagger-jar-file-path))
+                 (not (file-exists-p speech-tagger-jar-hash-path)))
+             (message "%s %s, %s %s" "speech-tagger.jar or hash not found at"
+                      speech-tagger-jar-file-path "downloading from"
+                      speech-tagger-jar-url)
+             (speech-tagger-force-refresh-jar))
+            ((or
+              (not speech-tagger-jar-hash)
+              (not (equal hash-contents speech-tagger-jar-hash)))
+             (message
+              "%s %s" "speech-tagger.jar is out of date, downloading from"
+              speech-tagger-jar-url)
+             (speech-tagger-force-refresh-jar))))))
 
 ;; check hash on load, and (re-)download jar/hash if required
 (speech-tagger-refresh-jar)
