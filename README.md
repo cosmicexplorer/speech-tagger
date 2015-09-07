@@ -7,7 +7,7 @@ speech-tagger
 
 You know what parts of speech are, but you've never seen them like this! In full living technicolor, language arises right before your very eyes!
 
-This is a program in two parts. The [clojure](clj/speech_tagger) section reads json in stdin (see [core.clj](clj/speech_tagger/core.clj)) and returns json characterizing parts of speech in that text using [corenlp](http://nlp.stanford.edu/software/corenlp.shtml). This is used in an [emacs extension](emacs/speech-tagger.el) ([here](https://melpa.org/#/speech-tagger) on [MELPA](https://melpa.org)).
+This is a program in two parts. The [clojure](clj/speech_tagger) section reads json in stdin (see [core.clj](clj/speech_tagger/core.clj)) and returns json characterizing parts of speech in that text using [corenlp](http://nlp.stanford.edu/software/corenlp.shtml). This is used in an [emacs extension](emacs/speech-tagger.el) ([here](https://melpa.org/#/speech-tagger) on [MELPA](https://melpa.org)) which allows you to highlight text and have it colored and tagged according to its part of speech as shown in the image above.
 
 # Dependencies
 
