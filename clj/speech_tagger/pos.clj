@@ -20,12 +20,11 @@
            (.toString (io/resource "english-left3words-distsim.tagger"))]
        ;; copied from corenlp's source; there doesn't seem to be another way to
        ;; turn off the loading message from the default constructor
-       (MaxentTagger. model-file
-                      (StringUtils/argsToProperties
-                       ;; variadic args from java to clojure requires some
-                       ;; gymnastics, especially with multiple arity
-                       (into-array ^String ["-model" model-file]))
-                      false)))))
+       (MaxentTagger.
+        model-file
+        (StringUtils/argsToProperties   ; variadic args
+         (into-array ^String ["-model" model-file]))
+        false)))))
 
 (def token-mods-map
   {"-LRB-" "("
