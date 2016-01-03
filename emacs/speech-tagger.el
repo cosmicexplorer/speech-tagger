@@ -512,6 +512,7 @@ Do so if required."
              (speech-tagger-force-refresh-jar))))))
 
 ;; check hash on load, and (re-)download jar/hash if required
+(eval-when-compile (speech-tagger-refresh-jar))
 (speech-tagger-refresh-jar)
 
 (defun speech-tagger-setup ()

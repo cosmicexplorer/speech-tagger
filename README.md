@@ -13,7 +13,7 @@ Emacs and the `java` command on your PATH. For development, requires [lein](http
 
 # Install
 
-For users: just install the `speech-tagger` [package from MELPA](https://melpa.org/#/speech-tagger). Downloads a pretty large jar file on first use, and also on updates, so don't be scared if it takes a while to download the first time; it only happens once.
+For users: just install the `speech-tagger` [package from MELPA](https://melpa.org/#/speech-tagger). Downloads a pretty large jar file on first use, and also on updates, so don't be scared if it takes a while to download and looks like it's frozen the first time; it only happens once.
 
 For devs: `load` [the el file](emacs/speech-tagger.el), or add it to `load-path` and `(require 'speech-tagger)`. Run `lein uberjar` to produce the standalone jar, then move that to `emacs/speech-tagger.jar`, or alternatively just customize `speech-tagger-jar-path` to point to the compiled jar. (I could make a build system that does this automatically, but eh.) Set `speech-tagger-is-development` to non-nil to avoid re-downloading the jar file.
 
