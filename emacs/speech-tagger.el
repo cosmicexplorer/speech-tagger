@@ -438,12 +438,14 @@ If PFX given, read buffer name to clear tags from."
 
 (defun speech-tagger-retrieve-url-no-headers (url)
   "Retrieve URL and remove HTTP headers."
-  (with-current-buffer (url-retrieve-synchronously url)
-    (goto-char (point-min))
-    (re-search-forward "^$")
-    (forward-char)
-    (delete-region (point-min) (point))
-    (current-buffer)))
+  (message "Retrieving from URL: %s" url)
+  (cl-letf (((symbol-function #'message) (symbol-function #'ignore)))
+    (with-current-buffer (url-retrieve-synchronously url)
+      (goto-char (point-min))
+      (re-search-forward "^$")
+      (forward-char)
+      (delete-region (point-min) (point))
+      (current-buffer))))
 
 (defconst speech-tagger-downloads-list
   (list
