@@ -271,18 +271,19 @@ Insert job with key ID into `speech-tagger-*jobs*'."
             (throw 'speech-tagger-different-text
                    (format "%s \"%s\" %s \"%s\"" "previous text" text
                            "is different than current text" new-txt)))
-          (let* ((olay (make-overlay beg-ind end-ind nil t))
-                 (tag-hash (gethash tag speech-tagger-*pos-hash*))
-                 (help-info
-                  (format "%s: e.g %s"
-                          (propertize (plist-get tag-hash :description)
-                                      'face 'font-lock-keyword-face)
-                          (plist-get tag-hash :examples))))
-            (overlay-put olay 'face (plist-get tag-hash :face))
-            (overlay-put olay 'speech-tagger t)
-            (overlay-put olay 'help-echo help-info)
-            (overlay-put olay 'speech-tagger-point-hover help-info)
-            (overlay-put olay 'mouse-face 'mode-line-highlight))))))
+          (let ((olay (make-overlay beg-ind end-ind nil t))
+                (tag-hash (gethash tag speech-tagger-*pos-hash*)))
+            (when tag-hash
+              (let ((help-info
+                     (format "%s: e.g %s"
+                             (propertize (plist-get tag-hash :description)
+                                         'face 'font-lock-keyword-face)
+                             (plist-get tag-hash :examples))))
+                (overlay-put olay 'face (plist-get tag-hash :face))
+                (overlay-put olay 'speech-tagger t)
+                (overlay-put olay 'help-echo help-info)
+                (overlay-put olay 'speech-tagger-point-hover help-info)
+                (overlay-put olay 'mouse-face 'mode-line-highlight))))))))
 
 (defun speech-tagger-process-tag-proc-json (plist)
   "Take json message PLIST from the external process.
@@ -328,10 +329,9 @@ Send line-buffered json string to `speech-tagger-process-tag-proc-json'."
          (substring str (1+ newline-match)))))))
 
 (defun speech-tagger-message-process-buffer (proc msg)
-  "Send PROC the string MSG while also inserting into PROC's process buffer."
+  "Insert MSG into PROC's process buffer."
   (with-current-buffer (process-buffer proc)
     (goto-char (point-max))
-    (when (eolp) (insert "\n"))
     (insert msg)))
 
 (defun speech-tagger-start-tag-process ()
@@ -352,8 +352,8 @@ Send line-buffered json string to `speech-tagger-process-tag-proc-json'."
      (set-process-sentinel
       new-proc (lambda (proc msg)
                  (speech-tagger-message-process-buffer proc msg)
-                 (message "%s %s %s"
-                          (process-name proc) "exited with message" msg)))
+                 (message "%s exited with message \"%s\""
+                          (process-name proc) msg)))
      new-proc)))
 
 (defun speech-tagger-post-command-fn ()
