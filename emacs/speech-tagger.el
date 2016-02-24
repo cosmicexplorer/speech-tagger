@@ -515,10 +515,6 @@ Do so if required."
               speech-tagger-jar-url)
              (speech-tagger-force-refresh-jar))))))
 
-;; check hash on load, and (re-)download jar/hash if required
-(eval-when-compile (speech-tagger-refresh-jar))
-(speech-tagger-refresh-jar)
-
 (defun speech-tagger-setup ()
   "Initialize globals as required.
 Must be re-run after using `speech-tagger-clear-state'."
@@ -556,6 +552,9 @@ warned that this function may take some time on large selections or buffers."
         (speech-tagger-clear-overlays (point-min) (point-max))
         (speech-tagger-send-region-to-tag-proc
          (point-min) (point-max) speech-tagger-*tag-proc*)))))
+
+;; check hash on load, and (re-)download jar/hash if required
+(speech-tagger-refresh-jar)
 
 (provide 'speech-tagger)
 
