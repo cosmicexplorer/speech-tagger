@@ -58,4 +58,4 @@ A friend of mine said it might be cool if I was to tag parts of speech in a sepa
 
 # License
 
-[GPL](GPL.md)
+[GPL 3.0+](./LICENSE)
